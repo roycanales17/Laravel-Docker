@@ -1,0 +1,61 @@
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: developer
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: app
+    container_name: app-laravel
+    restart: unless-stopped
+    environment:
+      VIRTUAL_HOST: laravel.test
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    networks:
+      - laravel
+  db:
+    image: mysql:8.0
+    container_name: mysql-laravel
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - laravel
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-laravel
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d
+      - ./docker-compose/nginx/ssl:/etc/nginx/conf.d/ssl
+      - ./docker-compose/nginx/phpmyadmin.conf:/etc/nginx/conf.d/phpmyadmin.conf
+    networks:
+      - laravel
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin-laravel
+    restart: unless-stopped
+    environment:
+        PMA_HOST: db
+        PMA_USER: ${DB_USERNAME}
+        PMA_PASSWORD: ${DB_PASSWORD}
+    networks:
+        - laravel
+networks:
+  laravel:
+    driver: bridge
